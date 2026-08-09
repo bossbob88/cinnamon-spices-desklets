@@ -18,6 +18,8 @@ const KIB_TO_B = 1024;      // 1 KiB = 1,024 B
 
 const CPU_TEMP_MIN =  20;    // Minimum CPU temperature
 const CPU_TEMP_MAX = 100;    // Maximum CPU temperature
+const GPU_TEMP_MIN =  20;    // Minimum GPU temperature
+const GPU_TEMP_MAX = 100;    // Maximum GPU temperature
 const CPU_FANSPEED_MAX = 4000; // CPU fan graph full-scale speed
 const CPU_FAN_RETRY_MIN = 5;   // Initial retry delay in seconds
 const CPU_FAN_RETRY_MAX = 300; // Maximum retry delay in seconds
@@ -109,6 +111,7 @@ SystemMonitorGraph.prototype = {
         this.settings.bindProperty(Settings.BindingDirection.IN, "data-prefix-gpumem", "data_prefix_gpumem", this.on_setting_changed);
         this.settings.bindProperty(Settings.BindingDirection.IN, "data-prefix-network", "data_prefix_network", this.on_setting_changed);
         this.settings.bindProperty(Settings.BindingDirection.IN, "network-interface", "network_interface", this.on_setting_changed);
+        this.settings.bindProperty(Settings.BindingDirection.IN, "network-label", "network_label", this.on_setting_changed);
         this.settings.bindProperty(Settings.BindingDirection.IN, "battery-name", "battery_name", this.on_setting_changed);
         this.settings.bindProperty(Settings.BindingDirection.IN, "filesystem", "filesystem", this.on_setting_changed);
         this.settings.bindProperty(Settings.BindingDirection.IN, "filesystem-label", "filesystem_label", this.on_setting_changed);
@@ -429,7 +432,8 @@ SystemMonitorGraph.prototype = {
                               this.get_amdgpu_gpu_temperature(this.gpu_amd_temperature_file);
                               break;
                       }
-                      value = 1.0 * (this.gpu_temperature - CPU_TEMP_MIN) / (CPU_TEMP_MAX - CPU_TEMP_MIN);
+                      // scale GPU temperature based on [GPU_TEMP_MIN, GPU_TEMP_MAX]
+                      value = 1.0 * (this.gpu_temperature - GPU_TEMP_MIN) / (GPU_TEMP_MAX - GPU_TEMP_MIN);
                       value = value < 0 ? 0 : value > 1 ? 1 : value;
                       text1 = _("GPU Temperature");
                       if (this.temperature_units_gpu == "C") {
@@ -445,8 +449,15 @@ SystemMonitorGraph.prototype = {
               this.get_network_values();
               // For network, we don't use the single 'value' variable as we have dual lines
               value = 0; // Not used for network type
-              text1 = _("Network");
-              
+              // Network label
+              text1 = this.network_label;
+              if (text1 == "") {
+                  if (this.network_interface.trim()  == "") {
+                      text1 = _("Network");
+                  } else {
+                      text1 = this.network_interface.trim();
+                  }
+              }
               // Format speeds with appropriate units
               let down_speed_formatted = this.format_network_speed(this.net_down_speed);
               let up_speed_formatted = this.format_network_speed(this.net_up_speed);
